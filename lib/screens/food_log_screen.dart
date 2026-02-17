@@ -34,6 +34,23 @@ class _FoodLogScreenState extends State<FoodLogScreen> {
     return widget.dayEntries[_selectedDateKey]!;
   }
 
+  void _showAddFoodDialog(DayEntry entry) {
+    showDialog(
+      context: context,
+      builder: (context) => QuickAddDialog(
+        onAdd: (name, time) {
+          final newItem = FoodItem(
+            id: DateTime.now().millisecondsSinceEpoch.toString(),
+            name: name,
+            time: time,
+          );
+          entry.foods.add(newItem);
+          _saveChanges();
+        },
+      ),
+    );
+  }
+
   void _saveChanges() {
     widget.onSave(widget.dayEntries);
     setState(() {});
@@ -116,24 +133,6 @@ class _FoodLogScreenState extends State<FoodLogScreen> {
             ),
           ),
         ],
-      ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => showDialog(
-          context: context,
-          builder: (context) => QuickAddDialog(
-            onAdd: (name, time) {
-              final newItem = FoodItem(
-                id: DateTime.now().millisecondsSinceEpoch.toString(),
-                name: name,
-                time: time,
-              );
-              entry.foods.add(newItem);
-              _saveChanges();
-            },
-          ),
-        ),
-        label: const Text("Comida"),
-        icon: const Icon(Icons.add),
       ),
     );
   }
@@ -299,51 +298,82 @@ class _FoodLogScreenState extends State<FoodLogScreen> {
 
   Widget _buildFoodSection(DayEntry entry) {
     if (entry.foods.isEmpty) {
-      return Container(
-        height: 100,
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(15),
-          border: Border.all(
-            color: AppTheme.textTertiary.withOpacity(0.1),
-            width: 2,
+      return InkWell(
+        onTap: () =>
+            _showAddFoodDialog(entry), // Llamamos a la función de agregar
+        borderRadius: BorderRadius.circular(15),
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 40),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(15),
+            border: Border.all(
+              color: AppTheme.textTertiary.withOpacity(0.2),
+              width: 2,
+              style: BorderStyle
+                  .solid, // Puedes usar BorderStyle.none si prefieres solo el fondo
+            ),
+            color: AppTheme.darkCard.withOpacity(0.5),
           ),
-        ),
-        child: const Center(
-          child: Text(
-            "Sin registros de comida",
-            style: TextStyle(color: AppTheme.textTertiary),
+          child: Column(
+            children: [
+              Icon(
+                Icons.add_circle_outline,
+                color: AppTheme.primary.withOpacity(0.6),
+                size: 32,
+              ),
+              const SizedBox(height: 12),
+              const Text(
+                "Toca para registrar tu primera comida",
+                style: TextStyle(
+                  color: AppTheme.textTertiary,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ],
           ),
         ),
       );
     }
 
+    // Si hay comidas, mostramos la lista y un botón pequeño al final para añadir más
     return Column(
-      children: entry.foods.map((food) {
-        return Card(
-          margin: const EdgeInsets.only(bottom: 8),
-          child: ListTile(
-            leading: Text(
-              food.time.format(context),
-              style: const TextStyle(
-                color: AppTheme.primary,
-                fontWeight: FontWeight.bold,
+      children: [
+        ...entry.foods.map(
+          (food) => Card(
+            margin: const EdgeInsets.only(bottom: 8),
+            child: ListTile(
+              leading: Text(
+                food.time.format(context),
+                style: const TextStyle(
+                  color: AppTheme.primary,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
-            ),
-            title: Text(food.name),
-            trailing: IconButton(
-              icon: const Icon(
-                Icons.close,
-                size: 20,
-                color: AppTheme.textTertiary,
+              title: Text(food.name),
+              trailing: IconButton(
+                icon: const Icon(
+                  Icons.close,
+                  size: 20,
+                  color: AppTheme.textTertiary,
+                ),
+                onPressed: () {
+                  entry.foods.remove(food);
+                  _saveChanges();
+                },
               ),
-              onPressed: () {
-                entry.foods.remove(food);
-                _saveChanges();
-              },
             ),
           ),
-        );
-      }).toList(),
+        ),
+        const SizedBox(height: 8),
+        // Botón sutil para añadir más cuando ya hay contenido
+        TextButton.icon(
+          onPressed: () => _showAddFoodDialog(entry),
+          icon: const Icon(Icons.add, size: 18),
+          label: const Text("Añadir otra comida"),
+          style: TextButton.styleFrom(foregroundColor: AppTheme.primary),
+        ),
+      ],
     );
   }
 

@@ -24,7 +24,6 @@ class _FoodLogScreenState extends State<FoodLogScreen> {
 
   String get _selectedDateKey => DateFormat('yyyy-MM-dd').format(_selectedDate);
 
-  // Helper para obtener o inicializar la entrada del día seleccionado
   DayEntry _getOrCreateEntry() {
     if (!widget.dayEntries.containsKey(_selectedDateKey)) {
       widget.dayEntries[_selectedDateKey] = DayEntry(
@@ -37,7 +36,7 @@ class _FoodLogScreenState extends State<FoodLogScreen> {
 
   void _saveChanges() {
     widget.onSave(widget.dayEntries);
-    setState(() {}); // Refresca la UI
+    setState(() {});
   }
 
   void _changeDate(DateTime date) {
@@ -102,13 +101,17 @@ class _FoodLogScreenState extends State<FoodLogScreen> {
                 _buildEnergyTracker(entry),
 
                 const SizedBox(height: 24),
+                _buildSectionHeader("Factores del día (Tags)"),
+                _buildTagsModule(entry),
+
+                const SizedBox(height: 24),
                 _buildSectionHeader("Registro de comidas"),
                 _buildFoodSection(entry),
 
                 const SizedBox(height: 24),
-                _buildSectionHeader("Salud"),
+                _buildSectionHeader("Salud y Reacciones"),
                 _buildReactionToggle(entry),
-                const SizedBox(height: 100), // Espacio para el FAB
+                const SizedBox(height: 100),
               ],
             ),
           ),
@@ -231,11 +234,11 @@ class _FoodLogScreenState extends State<FoodLogScreen> {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
-                  "Agotado",
+                  "Baja",
                   style: TextStyle(fontSize: 10, color: AppTheme.textTertiary),
                 ),
                 Text(
-                  "Enérgico",
+                  "Alta",
                   style: TextStyle(fontSize: 10, color: AppTheme.textTertiary),
                 ),
               ],
@@ -243,6 +246,54 @@ class _FoodLogScreenState extends State<FoodLogScreen> {
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildTagsModule(DayEntry entry) {
+    final availableTags = [
+      'Café',
+      'Alcohol',
+      'Gimnasio',
+      'Estrés',
+      'Poco Sueño',
+      'Ayuno',
+      'Viaje',
+      'Medicamento',
+    ];
+
+    return Wrap(
+      spacing: 8,
+      runSpacing: 8,
+      children: availableTags.map((tag) {
+        final isSelected = entry.tags.contains(tag);
+        return FilterChip(
+          label: Text(tag),
+          selected: isSelected,
+          onSelected: (bool value) {
+            setState(() {
+              if (value) {
+                entry.tags.add(tag);
+              } else {
+                entry.tags.remove(tag);
+              }
+            });
+            _saveChanges();
+          },
+          selectedColor: AppTheme.primary.withOpacity(0.2),
+          checkmarkColor: AppTheme.primary,
+          labelStyle: TextStyle(
+            color: isSelected ? AppTheme.primary : AppTheme.textSecondary,
+            fontSize: 12,
+          ),
+          backgroundColor: AppTheme.darkCard,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+            side: BorderSide(
+              color: isSelected ? AppTheme.primary : Colors.transparent,
+            ),
+          ),
+        );
+      }).toList(),
     );
   }
 
@@ -303,7 +354,11 @@ class _FoodLogScreenState extends State<FoodLogScreen> {
           : AppTheme.darkCard,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
       child: SwitchListTile(
-        title: const Text("¿Reacción alérgica/malestar?"),
+        title: const Text("¿Hubo malestar hoy?"),
+        subtitle: const Text(
+          "Marca si sentiste síntomas inusuales",
+          style: TextStyle(fontSize: 11),
+        ),
         value: entry.hadReaction,
         activeColor: AppTheme.danger,
         onChanged: (val) {
@@ -320,7 +375,7 @@ class _FoodLogScreenState extends State<FoodLogScreen> {
       padding: const EdgeInsets.symmetric(vertical: 10),
       child: ListView.builder(
         scrollDirection: Axis.horizontal,
-        itemCount: 60, // Aumentado para dar más margen de navegación
+        itemCount: 60,
         itemBuilder: (context, index) {
           final date = DateTime.now()
               .subtract(const Duration(days: 30))

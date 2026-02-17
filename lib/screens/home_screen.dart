@@ -121,7 +121,7 @@ class _HomeScreenState extends State<HomeScreen> {
             showDialog(
               context: context,
               builder: (context) => QuickAddDialog(
-                onAdd: (type, {name, time}) {
+                onAdd: (type, {energy, health, mood, name, tags, time}) {
                   if (type == 'food_save') {
                     _addFoodToToday(name!, time!);
                   } else {

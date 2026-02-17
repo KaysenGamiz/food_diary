@@ -265,11 +265,15 @@ class _FoodLogScreenState extends State<FoodLogScreen> {
       runSpacing: 8,
       children: availableTags.map((tag) {
         final isSelected = entry.tags.contains(tag);
+        final tagColor = AppTheme.getTagColor(tag);
+
         return FilterChip(
           label: Text(tag),
           selected: isSelected,
           onSelected: (bool value) {
             setState(() {
+              entry.tags = List<String>.from(entry.tags);
+
               if (value) {
                 entry.tags.add(tag);
               } else {
@@ -278,17 +282,19 @@ class _FoodLogScreenState extends State<FoodLogScreen> {
             });
             _saveChanges();
           },
-          selectedColor: AppTheme.primary.withOpacity(0.2),
-          checkmarkColor: AppTheme.primary,
+          selectedColor: tagColor.withOpacity(0.2),
+          checkmarkColor: tagColor,
           labelStyle: TextStyle(
-            color: isSelected ? AppTheme.primary : AppTheme.textSecondary,
+            color: isSelected ? tagColor : AppTheme.textSecondary,
             fontSize: 12,
+            fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
           ),
           backgroundColor: AppTheme.darkCard,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(20),
             side: BorderSide(
-              color: isSelected ? AppTheme.primary : Colors.transparent,
+              color: isSelected ? tagColor : Colors.transparent,
+              width: 1.5,
             ),
           ),
         );

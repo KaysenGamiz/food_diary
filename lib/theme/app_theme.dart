@@ -13,10 +13,37 @@ class AppTheme {
   static const warning = Color(0xFFFF9800);
   static const danger = Color(0xFFE53935);
 
+  // --- Paleta para Tags / Categorías ---
+  static const tagActivity = Color(0xFF42A5F5); // Azul
+  static const tagSubstance = Color(0xFFFFB74D); // Ámbar/Naranja
+  static const tagHealth = Color(0xFFFF5252); // Rojo
+  static const tagProtocol = Color(0xFFB39DDB); // Morado
+  static const tagLifestyle = Color(0xFF4DB6AC); // Teal
+
   // Text Colors
   static const textPrimary = Color(0xFFFFFFFF);
   static const textSecondary = Color(0xFFB0B0B0);
   static const textTertiary = Color(0xFF808080);
+
+  static Color getTagColor(String tag) {
+    switch (tag) {
+      case 'Gimnasio':
+        return tagActivity;
+      case 'Café':
+      case 'Alcohol':
+        return tagSubstance;
+      case 'Estrés':
+      case 'Poco Sueño':
+        return tagHealth;
+      case 'Ayuno':
+      case 'Medicamento':
+        return tagProtocol;
+      case 'Viaje':
+        return tagLifestyle;
+      default:
+        return primary;
+    }
+  }
 
   static ThemeData get darkTheme {
     return ThemeData(
@@ -30,7 +57,6 @@ class AppTheme {
         primary: primary,
         secondary: success,
         surface: darkCard,
-        background: darkBg,
         error: danger,
       ),
       appBarTheme: const AppBarTheme(
@@ -49,17 +75,18 @@ class AppTheme {
         elevation: 2,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       ),
+      // ... (el resto de tu configuración de navigationBar y floatingActionButton se mantiene igual)
       navigationBarTheme: NavigationBarThemeData(
         backgroundColor: darkCard,
         indicatorColor: primary.withOpacity(0.2),
-        iconTheme: MaterialStateProperty.resolveWith((states) {
-          if (states.contains(MaterialState.selected)) {
+        iconTheme: WidgetStateProperty.resolveWith((states) {
+          if (states.contains(WidgetState.selected)) {
             return const IconThemeData(color: primary);
           }
           return const IconThemeData(color: textSecondary);
         }),
-        labelTextStyle: MaterialStateProperty.resolveWith((states) {
-          if (states.contains(MaterialState.selected)) {
+        labelTextStyle: WidgetStateProperty.resolveWith((states) {
+          if (states.contains(WidgetState.selected)) {
             return const TextStyle(
               color: primary,
               fontSize: 12,

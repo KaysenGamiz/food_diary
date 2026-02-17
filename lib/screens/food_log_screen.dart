@@ -38,14 +38,16 @@ class _FoodLogScreenState extends State<FoodLogScreen> {
     showDialog(
       context: context,
       builder: (context) => QuickAddDialog(
-        onAdd: (name, time) {
-          final newItem = FoodItem(
-            id: DateTime.now().millisecondsSinceEpoch.toString(),
-            name: name,
-            time: time,
-          );
-          entry.foods.add(newItem);
-          _saveChanges();
+        onAdd: (type, {name, time}) {
+          if (type == 'food_save') {
+            final newItem = FoodItem(
+              id: DateTime.now().millisecondsSinceEpoch.toString(),
+              name: name!,
+              time: time!,
+            );
+            entry.foods.add(newItem);
+            _saveChanges();
+          }
         },
       ),
     );

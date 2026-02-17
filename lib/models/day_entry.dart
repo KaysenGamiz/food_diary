@@ -6,20 +6,20 @@ class DayEntry {
   List<FoodItem> foods;
   bool hadReaction;
   String? reactionNotes;
-
   String? mood;
   int? energyLevel;
   List<String> tags;
 
   DayEntry({
     required this.date,
-    this.foods = const [],
+    List<FoodItem>? foods,
     this.hadReaction = false,
     this.reactionNotes,
     this.mood,
     this.energyLevel,
-    this.tags = const [],
-  });
+    List<String>? tags,
+  }) : foods = foods ?? [],
+       tags = tags ?? [];
 
   String get dateKey => DateFormat('yyyy-MM-dd').format(date);
 

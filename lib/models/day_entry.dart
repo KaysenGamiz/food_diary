@@ -7,11 +7,18 @@ class DayEntry {
   bool hadReaction;
   String? reactionNotes;
 
+  String? mood;
+  int? energyLevel;
+  List<String> tags;
+
   DayEntry({
     required this.date,
     this.foods = const [],
     this.hadReaction = false,
     this.reactionNotes,
+    this.mood,
+    this.energyLevel,
+    this.tags = const [],
   });
 
   String get dateKey => DateFormat('yyyy-MM-dd').format(date);
@@ -21,14 +28,22 @@ class DayEntry {
     'foods': foods.map((f) => f.toJson()).toList(),
     'hadReaction': hadReaction,
     'reactionNotes': reactionNotes,
+    'mood': mood,
+    'energyLevel': energyLevel,
+    'tags': tags,
   };
 
   factory DayEntry.fromJson(Map<String, dynamic> json) {
     return DayEntry(
       date: DateTime.parse(json['date']),
-      foods: (json['foods'] as List).map((f) => FoodItem.fromJson(f)).toList(),
+      foods: (json['foods'] as List)
+          .map((f) => FoodItem.fromJson(f as Map<String, dynamic>))
+          .toList(),
       hadReaction: json['hadReaction'] ?? false,
       reactionNotes: json['reactionNotes'],
+      mood: json['mood'],
+      energyLevel: json['energyLevel'],
+      tags: json['tags'] != null ? List<String>.from(json['tags']) : [],
     );
   }
 }

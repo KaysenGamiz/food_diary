@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../models/day_entry.dart';
+import '../models/mood_model.dart';
 import '../models/food_item.dart';
 import '../theme/app_theme.dart';
 import '../widgets/quick_add_dialog.dart';
@@ -167,14 +168,6 @@ class _FoodLogScreenState extends State<FoodLogScreen> {
   }
 
   Widget _buildMoodSelector(DayEntry entry) {
-    final moods = [
-      {'label': 'Mal', 'emoji': '😡'},
-      {'label': 'Triste', 'emoji': '😔'},
-      {'label': 'Neutral', 'emoji': '😐'},
-      {'label': 'Bien', 'emoji': '😊'},
-      {'label': 'Excelente', 'emoji': '🤩'},
-    ];
-
     return Card(
       color: AppTheme.darkCard,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
@@ -182,11 +175,12 @@ class _FoodLogScreenState extends State<FoodLogScreen> {
         padding: const EdgeInsets.symmetric(vertical: 12),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceAround,
-          children: moods.map((m) {
-            final isSelected = entry.mood == m['label'];
+          children: MoodData.all.map((m) {
+            // <-- Usamos la lista centralizada
+            final isSelected = entry.mood == m.label;
             return GestureDetector(
               onTap: () {
-                entry.mood = m['label'] as String;
+                entry.mood = m.label;
                 _saveChanges();
               },
               child: AnimatedContainer(
@@ -202,10 +196,7 @@ class _FoodLogScreenState extends State<FoodLogScreen> {
                     width: 2,
                   ),
                 ),
-                child: Text(
-                  m['emoji'] as String,
-                  style: const TextStyle(fontSize: 26),
-                ),
+                child: Text(m.emoji, style: const TextStyle(fontSize: 26)),
               ),
             );
           }).toList(),

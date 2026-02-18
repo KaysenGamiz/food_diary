@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../theme/app_theme.dart';
 import '../models/quick_add_model.dart';
+import '../models/mood_model.dart';
 
 class QuickAddDialog extends StatefulWidget {
   final String? initialMood;
@@ -36,30 +37,18 @@ class _QuickAddDialogState extends State<QuickAddDialog> {
   final _foodController = TextEditingController();
   TimeOfDay _selectedTime = TimeOfDay.now();
   double _selectedEnergy = 3.0;
-  int _selectedMoodIndex = 2;
+
+  String _selectedMoodLabel = 'Neutral';
+
   List<String> _tempTags = [];
   bool _hadReaction = false;
-
-  final List<Map<String, dynamic>> _moods = [
-    {'label': 'Mal', 'emoji': '😡'},
-    {'label': 'Triste', 'emoji': '😔'},
-    {'label': 'Neutral', 'emoji': '😐'},
-    {'label': 'Bien', 'emoji': '😊'},
-    {'label': 'Excelente', 'emoji': '🤩'},
-  ];
 
   @override
   void initState() {
     super.initState();
     _selectedEnergy = (widget.initialEnergy ?? 3).toDouble();
     _tempTags = List.from(widget.initialTags);
-
-    if (widget.initialMood != null) {
-      _selectedMoodIndex = _moods.indexWhere(
-        (m) => m['label'] == widget.initialMood,
-      );
-      if (_selectedMoodIndex == -1) _selectedMoodIndex = 2;
-    }
+    _selectedMoodLabel = widget.initialMood ?? 'Neutral';
   }
 
   @override
@@ -181,9 +170,10 @@ class _QuickAddDialogState extends State<QuickAddDialog> {
         TextField(
           controller: _foodController,
           textAlign: TextAlign.center,
-          style: const TextStyle(fontSize: 18),
+          style: const TextStyle(fontSize: 18, color: Colors.white),
           decoration: const InputDecoration(
             hintText: '¿Qué comiste?',
+            hintStyle: TextStyle(color: AppTheme.textTertiary),
             border: InputBorder.none,
           ),
           autofocus: true,
@@ -202,7 +192,10 @@ class _QuickAddDialogState extends State<QuickAddDialog> {
             children: [
               const Icon(Icons.access_time, size: 18, color: AppTheme.primary),
               const SizedBox(width: 8),
-              Text('Hora: ${_selectedTime.format(context)}'),
+              Text(
+                'Hora: ${_selectedTime.format(context)}',
+                style: const TextStyle(color: AppTheme.textPrimary),
+              ),
             ],
           ),
         ),
@@ -213,30 +206,26 @@ class _QuickAddDialogState extends State<QuickAddDialog> {
   Widget _buildMoodInputs() {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceAround,
-      children: List.generate(_moods.length, (index) {
+      children: MoodData.all.map((mood) {
+        final isSelected = _selectedMoodLabel == mood.label;
         return GestureDetector(
-          onTap: () => setState(() => _selectedMoodIndex = index),
+          onTap: () => setState(() => _selectedMoodLabel = mood.label),
           child: AnimatedContainer(
             duration: const Duration(milliseconds: 200),
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
-              color: _selectedMoodIndex == index
-                  ? Colors.white10
-                  : Colors.transparent,
+              color: isSelected ? Colors.white10 : Colors.transparent,
               borderRadius: BorderRadius.circular(12),
               border: Border.all(
-                color: _selectedMoodIndex == index
+                color: isSelected
                     ? Colors.amber.withOpacity(0.5)
                     : Colors.transparent,
               ),
             ),
-            child: Text(
-              _moods[index]['emoji'],
-              style: const TextStyle(fontSize: 32),
-            ),
+            child: Text(mood.emoji, style: const TextStyle(fontSize: 32)),
           ),
         );
-      }),
+      }).toList(),
     );
   }
 
@@ -329,10 +318,13 @@ class _QuickAddDialogState extends State<QuickAddDialog> {
   Widget _buildHealthInputs() {
     return SwitchListTile(
       contentPadding: const EdgeInsets.symmetric(horizontal: 8),
-      title: const Text("¿Hubo malestar?", style: TextStyle(fontSize: 16)),
+      title: const Text(
+        "¿Hubo malestar?",
+        style: TextStyle(fontSize: 16, color: Colors.white),
+      ),
       subtitle: const Text(
         "Marca si sentiste síntomas inusuales",
-        style: TextStyle(fontSize: 11),
+        style: TextStyle(fontSize: 11, color: AppTheme.textSecondary),
       ),
       value: _hadReaction,
       activeColor: AppTheme.danger,
@@ -340,7 +332,6 @@ class _QuickAddDialogState extends State<QuickAddDialog> {
     );
   }
 
-  // --- BOTÓN DE GUARDADO OPTIMIZADO ---
   Widget _buildSaveButton() {
     if (_currentView == null) return const SizedBox.shrink();
 
@@ -370,7 +361,7 @@ class _QuickAddDialogState extends State<QuickAddDialog> {
               }
               break;
             case QuickAddType.mood:
-              widget.onAdd(type, mood: _moods[_selectedMoodIndex]['label']);
+              widget.onAdd(type, mood: _selectedMoodLabel);
               break;
             case QuickAddType.energy:
               widget.onAdd(type, energy: _selectedEnergy.toInt());
@@ -382,7 +373,6 @@ class _QuickAddDialogState extends State<QuickAddDialog> {
               widget.onAdd(type, health: _hadReaction);
               break;
           }
-
           Navigator.pop(context);
         },
         child: Text(
@@ -397,14 +387,17 @@ class _QuickAddDialogState extends State<QuickAddDialog> {
     );
   }
 
-  // --- MENÚ PRINCIPAL ---
   Widget _buildMenu() {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
         const Text(
           "Atajos de hoy",
-          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+          style: TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
+            color: Colors.white,
+          ),
         ),
         const SizedBox(height: 24),
         Row(
@@ -485,7 +478,11 @@ class _QuickAddDialogState extends State<QuickAddDialog> {
             const SizedBox(height: 8),
             Text(
               label,
-              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
+              style: const TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w500,
+                color: Colors.white,
+              ),
             ),
           ],
         ),

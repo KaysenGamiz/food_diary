@@ -2,18 +2,28 @@ import 'package:flutter/material.dart';
 import '../theme/app_theme.dart';
 
 class QuickAddDialog extends StatefulWidget {
+  final String? initialMood;
+  final int? initialEnergy;
+  final List<String> initialTags;
+
   final Function(
     String type, {
-    String? name,
-    TimeOfDay? time,
     int? energy,
-    String? mood,
-    List<String>? tags,
     bool? health,
+    String? mood,
+    String? name,
+    List<String>? tags,
+    TimeOfDay? time,
   })
   onAdd;
 
-  const QuickAddDialog({Key? key, required this.onAdd}) : super(key: key);
+  const QuickAddDialog({
+    super.key,
+    this.initialMood,
+    this.initialEnergy,
+    required this.initialTags,
+    required this.onAdd,
+  });
 
   @override
   State<QuickAddDialog> createState() => _QuickAddDialogState();

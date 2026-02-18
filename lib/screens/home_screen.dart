@@ -118,17 +118,47 @@ class _HomeScreenState extends State<HomeScreen> {
         selectedIndex: _selectedIndex,
         onDestinationSelected: (index) {
           if (index == 2) {
+            final String todayKey = DateFormat(
+              'yyyy-MM-dd',
+            ).format(DateTime.now());
+
+            final DayEntry todayEntry =
+                dayEntries[todayKey] ??
+                DayEntry(date: DateTime.now(), foods: [], tags: []);
+
             showDialog(
               context: context,
               builder: (context) => QuickAddDialog(
+                initialMood: todayEntry.mood,
+                initialEnergy: todayEntry.energyLevel,
+                initialTags: todayEntry.tags,
                 onAdd: (type, {energy, health, mood, name, tags, time}) {
-                  if (type == 'food_save') {
-                    _addFoodToToday(name!, time!);
-                  } else {
-                    setState(() {
-                      _selectedIndex = 1;
-                    });
-                  }
+                  setState(() {
+                    if (!dayEntries.containsKey(todayKey)) {
+                      dayEntries[todayKey] = todayEntry;
+                    }
+
+                    switch (type) {
+                      case 'food_save':
+                        _addFoodToToday(name!, time!);
+                        break;
+                      case 'mood': // Asegúrate de que este string coincida con el que envía tu Dialog
+                        dayEntries[todayKey]!.mood = mood;
+                        break;
+                      case 'energy':
+                        dayEntries[todayKey]!.energyLevel = energy;
+                        break;
+                      case 'tags':
+                        dayEntries[todayKey]!.tags = tags ?? [];
+                        break;
+                      case 'health':
+                        dayEntries[todayKey]!.hadReaction = health ?? false;
+                        break;
+                    }
+                  });
+
+                  // 4. Guardamos permanentemente
+                  _saveEntries();
                 },
               ),
             );

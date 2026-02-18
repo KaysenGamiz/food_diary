@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 // Models & Utils
 import '../models/day_entry.dart';
 import '../models/food_item.dart';
+import '../models/quick_add_model.dart';
 import '../utils/storage_service.dart';
 import '../theme/app_theme.dart';
 
@@ -139,25 +140,23 @@ class _HomeScreenState extends State<HomeScreen> {
                     }
 
                     switch (type) {
-                      case 'food_save':
+                      case QuickAddType.food:
                         _addFoodToToday(name!, time!);
                         break;
-                      case 'mood': // Asegúrate de que este string coincida con el que envía tu Dialog
+                      case QuickAddType.mood:
                         dayEntries[todayKey]!.mood = mood;
                         break;
-                      case 'energy':
+                      case QuickAddType.energy:
                         dayEntries[todayKey]!.energyLevel = energy;
                         break;
-                      case 'tags':
+                      case QuickAddType.tags:
                         dayEntries[todayKey]!.tags = tags ?? [];
                         break;
-                      case 'health':
+                      case QuickAddType.health:
                         dayEntries[todayKey]!.hadReaction = health ?? false;
                         break;
                     }
                   });
-
-                  // 4. Guardamos permanentemente
                   _saveEntries();
                 },
               ),

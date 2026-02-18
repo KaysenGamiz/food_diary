@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../theme/app_theme.dart';
+import '../models/quick_add_model.dart';
 
 class QuickAddDialog extends StatefulWidget {
   final String? initialMood;
@@ -7,7 +8,7 @@ class QuickAddDialog extends StatefulWidget {
   final List<String> initialTags;
 
   final Function(
-    String type, {
+    QuickAddType type, {
     int? energy,
     bool? health,
     String? mood,
@@ -30,9 +31,8 @@ class QuickAddDialog extends StatefulWidget {
 }
 
 class _QuickAddDialogState extends State<QuickAddDialog> {
-  String _currentView = 'menu';
+  QuickAddType? _currentView;
 
-  // Estados de los formularios
   final _foodController = TextEditingController();
   TimeOfDay _selectedTime = TimeOfDay.now();
   double _selectedEnergy = 3.0;
@@ -47,6 +47,20 @@ class _QuickAddDialogState extends State<QuickAddDialog> {
     {'label': 'Bien', 'emoji': '😊'},
     {'label': 'Excelente', 'emoji': '🤩'},
   ];
+
+  @override
+  void initState() {
+    super.initState();
+    _selectedEnergy = (widget.initialEnergy ?? 3).toDouble();
+    _tempTags = List.from(widget.initialTags);
+
+    if (widget.initialMood != null) {
+      _selectedMoodIndex = _moods.indexWhere(
+        (m) => m['label'] == widget.initialMood,
+      );
+      if (_selectedMoodIndex == -1) _selectedMoodIndex = 2;
+    }
+  }
 
   @override
   void dispose() {
@@ -73,35 +87,35 @@ class _QuickAddDialogState extends State<QuickAddDialog> {
 
   Widget _buildCurrentView() {
     switch (_currentView) {
-      case 'food':
+      case QuickAddType.food:
         return _buildGenericForm(
           Icons.restaurant,
           "Comida",
           AppTheme.primary,
           _buildFoodInputs(),
         );
-      case 'mood':
+      case QuickAddType.mood:
         return _buildGenericForm(
           Icons.mood,
           "Mood",
           Colors.amber,
           _buildMoodInputs(),
         );
-      case 'energy':
+      case QuickAddType.energy:
         return _buildGenericForm(
           Icons.bolt,
           "Energía",
           Colors.yellow,
           _buildEnergyInputs(),
         );
-      case 'tags':
+      case QuickAddType.tags:
         return _buildGenericForm(
           Icons.local_offer_outlined,
           "Tags",
           AppTheme.tagActivity,
           _buildTagsInputs(),
         );
-      case 'health':
+      case QuickAddType.health:
         return _buildGenericForm(
           Icons.healing_outlined,
           "Salud",
@@ -113,7 +127,7 @@ class _QuickAddDialogState extends State<QuickAddDialog> {
     }
   }
 
-  // --- ESTRUCTURA GENÉRICA PARA FORMULARIOS DETALLADOS ---
+  // --- ESTRUCTURA GENÉRICA ---
   Widget _buildGenericForm(
     IconData icon,
     String title,
@@ -130,7 +144,7 @@ class _QuickAddDialogState extends State<QuickAddDialog> {
               alignment: Alignment.centerLeft,
               child: IconButton(
                 icon: const Icon(Icons.arrow_back_ios_new, size: 18),
-                onPressed: () => setState(() => _currentView = 'menu'),
+                onPressed: () => setState(() => _currentView = null),
               ),
             ),
             Column(
@@ -167,13 +181,12 @@ class _QuickAddDialogState extends State<QuickAddDialog> {
           child: inputs,
         ),
         const SizedBox(height: 24),
-        _buildSaveButton(title, color),
+        _buildSaveButton(color), // Quitamos el title, usaremos _currentView
       ],
     );
   }
 
   // --- INPUTS ESPECÍFICOS ---
-
   Widget _buildFoodInputs() {
     return Column(
       children: [
@@ -340,7 +353,7 @@ class _QuickAddDialogState extends State<QuickAddDialog> {
   }
 
   // --- BOTÓN DE GUARDADO ---
-  Widget _buildSaveButton(String title, Color color) {
+  Widget _buildSaveButton(Color color) {
     return SizedBox(
       width: double.infinity,
       height: 50,
@@ -352,22 +365,37 @@ class _QuickAddDialogState extends State<QuickAddDialog> {
           ),
         ),
         onPressed: () {
-          if (_currentView == 'food') {
-            if (_foodController.text.isNotEmpty) {
-              widget.onAdd(
-                'food_save',
-                name: _foodController.text,
-                time: _selectedTime,
-              );
+          // 4. SINCRONIZACIÓN DE VUELTA: Enviamos los datos al presionar AGREGAR
+          if (_currentView != null) {
+            switch (_currentView!) {
+              case QuickAddType.food:
+                if (_foodController.text.isNotEmpty) {
+                  widget.onAdd(
+                    QuickAddType.food,
+                    name: _foodController.text,
+                    time: _selectedTime,
+                  );
+                }
+                break;
+              case QuickAddType.mood:
+                widget.onAdd(
+                  QuickAddType.mood,
+                  mood: _moods[_selectedMoodIndex]['label'],
+                );
+                break;
+              case QuickAddType.energy:
+                widget.onAdd(
+                  QuickAddType.energy,
+                  energy: _selectedEnergy.toInt(),
+                );
+                break;
+              case QuickAddType.tags:
+                widget.onAdd(QuickAddType.tags, tags: _tempTags);
+                break;
+              case QuickAddType.health:
+                widget.onAdd(QuickAddType.health, health: _hadReaction);
+                break;
             }
-          } else if (_currentView == 'mood') {
-            widget.onAdd('mood', mood: _moods[_selectedMoodIndex]['label']);
-          } else if (_currentView == 'energy') {
-            widget.onAdd('energy', energy: _selectedEnergy.toInt());
-          } else if (_currentView == 'tags') {
-            widget.onAdd('tags', tags: _tempTags);
-          } else if (_currentView == 'health') {
-            widget.onAdd('health', health: _hadReaction);
           }
           Navigator.pop(context);
         },
@@ -379,7 +407,7 @@ class _QuickAddDialogState extends State<QuickAddDialog> {
     );
   }
 
-  // --- MENÚ DE ICONOS PRINCIPAL ---
+  // --- MENÚ PRINCIPAL ---
   Widget _buildMenu() {
     return Column(
       mainAxisSize: MainAxisSize.min,
@@ -396,19 +424,19 @@ class _QuickAddDialogState extends State<QuickAddDialog> {
               Icons.restaurant,
               "Comida",
               AppTheme.primary,
-              () => setState(() => _currentView = 'food'),
+              () => setState(() => _currentView = QuickAddType.food),
             ),
             _buildQuickIcon(
               Icons.mood,
               "Mood",
               Colors.amber,
-              () => setState(() => _currentView = 'mood'),
+              () => setState(() => _currentView = QuickAddType.mood),
             ),
             _buildQuickIcon(
               Icons.bolt,
               "Energía",
               Colors.yellow,
-              () => setState(() => _currentView = 'energy'),
+              () => setState(() => _currentView = QuickAddType.energy),
             ),
           ],
         ),
@@ -420,15 +448,15 @@ class _QuickAddDialogState extends State<QuickAddDialog> {
               Icons.local_offer_outlined,
               "Tags",
               AppTheme.tagActivity,
-              () => setState(() => _currentView = 'tags'),
+              () => setState(() => _currentView = QuickAddType.tags),
             ),
             _buildQuickIcon(
               Icons.healing_outlined,
               "Salud",
               AppTheme.danger,
-              () => setState(() => _currentView = 'health'),
+              () => setState(() => _currentView = QuickAddType.health),
             ),
-            const SizedBox(width: 80), // Espaciador para mantener alineación
+            const SizedBox(width: 80),
           ],
         ),
         const SizedBox(height: 24),

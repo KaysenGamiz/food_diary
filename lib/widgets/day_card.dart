@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../models/day_entry.dart';
-import '../models/mood_model.dart'; // Importamos el nuevo modelo centralizado
+import '../models/mood_model.dart';
+import '../models/tag_model.dart';
 import '../theme/app_theme.dart';
 import 'day_details_dialog.dart';
 
@@ -150,25 +151,26 @@ class DayCard extends StatelessWidget {
     return Wrap(
       spacing: 8,
       runSpacing: 8,
-      children: day.tags.map((tag) {
-        final color = AppTheme.getTagColor(tag);
+      children: day.tags.map((tagName) {
+        // Obtenemos toda la info del tag desde el modelo central
+        final tag = TagData.getByName(tagName);
 
         return Container(
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
           decoration: BoxDecoration(
-            color: color.withOpacity(0.12),
+            color: tag.color.withOpacity(0.12),
             borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: color.withOpacity(0.4), width: 1),
+            border: Border.all(color: tag.color.withOpacity(0.4), width: 1),
           ),
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(_getIconForTag(tag), size: 12, color: color),
+              Icon(tag.icon, size: 12, color: tag.color), // Icono automático
               const SizedBox(width: 6),
               Text(
-                tag,
+                tag.name,
                 style: TextStyle(
-                  color: color,
+                  color: tag.color,
                   fontSize: 11,
                   fontWeight: FontWeight.bold,
                 ),
@@ -178,23 +180,6 @@ class DayCard extends StatelessWidget {
         );
       }).toList(),
     );
-  }
-
-  IconData _getIconForTag(String tag) {
-    switch (tag) {
-      case 'Gimnasio':
-        return Icons.fitness_center;
-      case 'Café':
-        return Icons.coffee;
-      case 'Alcohol':
-        return Icons.local_bar;
-      case 'Estrés':
-        return Icons.psychology;
-      case 'Medicamento':
-        return Icons.medication;
-      default:
-        return Icons.local_offer;
-    }
   }
 
   Widget _buildReactionNotes() {

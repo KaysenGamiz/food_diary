@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../theme/app_theme.dart';
+import '../models/tag_model.dart';
 import '../models/quick_add_model.dart';
 import '../models/mood_model.dart';
 
@@ -268,37 +269,26 @@ class _QuickAddDialogState extends State<QuickAddDialog> {
   }
 
   Widget _buildTagsInputs() {
-    final availableTags = [
-      'Café',
-      'Alcohol',
-      'Gimnasio',
-      'Estrés',
-      'Poco Sueño',
-      'Ayuno',
-      'Viaje',
-      'Medicamento',
-    ];
-
     return Wrap(
       spacing: 8,
       runSpacing: 8,
       alignment: WrapAlignment.center,
-      children: availableTags.map((tag) {
-        final isSelected = _tempTags.contains(tag);
-        final Color tagColor = AppTheme.getTagColor(tag);
+      children: TagData.all.map((tag) {
+        // <-- Usamos el nuevo modelo
+        final isSelected = _tempTags.contains(tag.name);
 
         return FilterChip(
-          label: Text(tag),
+          label: Text(tag.name),
           selected: isSelected,
           onSelected: (bool value) {
             setState(() {
-              value ? _tempTags.add(tag) : _tempTags.remove(tag);
+              value ? _tempTags.add(tag.name) : _tempTags.remove(tag.name);
             });
           },
-          selectedColor: tagColor.withOpacity(0.2),
-          checkmarkColor: tagColor,
+          selectedColor: tag.color.withOpacity(0.2),
+          checkmarkColor: tag.color,
           labelStyle: TextStyle(
-            color: isSelected ? tagColor : AppTheme.textSecondary,
+            color: isSelected ? tag.color : AppTheme.textSecondary,
             fontSize: 12,
             fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
           ),
@@ -306,7 +296,7 @@ class _QuickAddDialogState extends State<QuickAddDialog> {
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(20),
             side: BorderSide(
-              color: isSelected ? tagColor : AppTheme.darkDivider,
+              color: isSelected ? tag.color : AppTheme.darkDivider,
               width: 1.5,
             ),
           ),

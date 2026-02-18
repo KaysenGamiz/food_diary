@@ -86,45 +86,33 @@ class _QuickAddDialogState extends State<QuickAddDialog> {
   }
 
   Widget _buildCurrentView() {
-    switch (_currentView) {
+    if (_currentView == null) return _buildMenu();
+
+    Widget inputs;
+    switch (_currentView!) {
       case QuickAddType.food:
-        return _buildGenericForm(
-          Icons.restaurant,
-          "Comida",
-          AppTheme.primary,
-          _buildFoodInputs(),
-        );
+        inputs = _buildFoodInputs();
+        break;
       case QuickAddType.mood:
-        return _buildGenericForm(
-          Icons.mood,
-          "Mood",
-          Colors.amber,
-          _buildMoodInputs(),
-        );
+        inputs = _buildMoodInputs();
+        break;
       case QuickAddType.energy:
-        return _buildGenericForm(
-          Icons.bolt,
-          "Energía",
-          Colors.yellow,
-          _buildEnergyInputs(),
-        );
+        inputs = _buildEnergyInputs();
+        break;
       case QuickAddType.tags:
-        return _buildGenericForm(
-          Icons.local_offer_outlined,
-          "Tags",
-          AppTheme.tagActivity,
-          _buildTagsInputs(),
-        );
+        inputs = _buildTagsInputs();
+        break;
       case QuickAddType.health:
-        return _buildGenericForm(
-          Icons.healing_outlined,
-          "Salud",
-          AppTheme.danger,
-          _buildHealthInputs(),
-        );
-      default:
-        return _buildMenu();
+        inputs = _buildHealthInputs();
+        break;
     }
+
+    return _buildGenericForm(
+      _currentView!.icon,
+      _currentView!.title,
+      _currentView!.color,
+      inputs,
+    );
   }
 
   // --- ESTRUCTURA GENÉRICA ---
@@ -181,7 +169,7 @@ class _QuickAddDialogState extends State<QuickAddDialog> {
           child: inputs,
         ),
         const SizedBox(height: 24),
-        _buildSaveButton(color), // Quitamos el title, usaremos _currentView
+        _buildSaveButton(),
       ],
     );
   }
@@ -352,56 +340,58 @@ class _QuickAddDialogState extends State<QuickAddDialog> {
     );
   }
 
-  // --- BOTÓN DE GUARDADO ---
-  Widget _buildSaveButton(Color color) {
+  // --- BOTÓN DE GUARDADO OPTIMIZADO ---
+  Widget _buildSaveButton() {
+    if (_currentView == null) return const SizedBox.shrink();
+
+    final type = _currentView!;
+    final buttonColor = type.color;
+
     return SizedBox(
       width: double.infinity,
       height: 50,
       child: ElevatedButton(
         style: ElevatedButton.styleFrom(
-          backgroundColor: color,
+          backgroundColor: buttonColor,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(15),
           ),
+          elevation: 0,
         ),
         onPressed: () {
-          // 4. SINCRONIZACIÓN DE VUELTA: Enviamos los datos al presionar AGREGAR
-          if (_currentView != null) {
-            switch (_currentView!) {
-              case QuickAddType.food:
-                if (_foodController.text.isNotEmpty) {
-                  widget.onAdd(
-                    QuickAddType.food,
-                    name: _foodController.text,
-                    time: _selectedTime,
-                  );
-                }
-                break;
-              case QuickAddType.mood:
+          switch (type) {
+            case QuickAddType.food:
+              if (_foodController.text.isNotEmpty) {
                 widget.onAdd(
-                  QuickAddType.mood,
-                  mood: _moods[_selectedMoodIndex]['label'],
+                  type,
+                  name: _foodController.text,
+                  time: _selectedTime,
                 );
-                break;
-              case QuickAddType.energy:
-                widget.onAdd(
-                  QuickAddType.energy,
-                  energy: _selectedEnergy.toInt(),
-                );
-                break;
-              case QuickAddType.tags:
-                widget.onAdd(QuickAddType.tags, tags: _tempTags);
-                break;
-              case QuickAddType.health:
-                widget.onAdd(QuickAddType.health, health: _hadReaction);
-                break;
-            }
+              }
+              break;
+            case QuickAddType.mood:
+              widget.onAdd(type, mood: _moods[_selectedMoodIndex]['label']);
+              break;
+            case QuickAddType.energy:
+              widget.onAdd(type, energy: _selectedEnergy.toInt());
+              break;
+            case QuickAddType.tags:
+              widget.onAdd(type, tags: _tempTags);
+              break;
+            case QuickAddType.health:
+              widget.onAdd(type, health: _hadReaction);
+              break;
           }
+
           Navigator.pop(context);
         },
-        child: const Text(
-          "AGREGAR",
-          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+        child: Text(
+          "AGREGAR ${type.title.toUpperCase()}",
+          style: const TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.bold,
+            letterSpacing: 1.1,
+          ),
         ),
       ),
     );

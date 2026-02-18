@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 import '../models/day_entry.dart';
 import '../models/food_item.dart';
 import '../models/quick_add_model.dart';
+import '../models/nav_tab_model.dart';
 import '../utils/storage_service.dart';
 import '../theme/app_theme.dart';
 
@@ -60,6 +61,48 @@ class _HomeScreenState extends State<HomeScreen> {
     _saveEntries();
   }
 
+  void _openQuickAdd() {
+    final String todayKey = DateFormat('yyyy-MM-dd').format(DateTime.now());
+    final DayEntry todayEntry =
+        dayEntries[todayKey] ??
+        DayEntry(date: DateTime.now(), foods: [], tags: []);
+
+    showDialog(
+      context: context,
+      builder: (context) => QuickAddDialog(
+        initialMood: todayEntry.mood,
+        initialEnergy: todayEntry.energyLevel,
+        initialTags: todayEntry.tags,
+        onAdd: (type, {energy, health, mood, name, tags, time}) {
+          setState(() {
+            if (!dayEntries.containsKey(todayKey)) {
+              dayEntries[todayKey] = todayEntry;
+            }
+
+            switch (type) {
+              case QuickAddType.food:
+                _addFoodToToday(name!, time!);
+                break;
+              case QuickAddType.mood:
+                dayEntries[todayKey]!.mood = mood;
+                break;
+              case QuickAddType.energy:
+                dayEntries[todayKey]!.energyLevel = energy;
+                break;
+              case QuickAddType.tags:
+                dayEntries[todayKey]!.tags = tags ?? [];
+                break;
+              case QuickAddType.health:
+                dayEntries[todayKey]!.hadReaction = health ?? false;
+                break;
+            }
+          });
+          _saveEntries();
+        },
+      ),
+    );
+  }
+
   void _addFoodToToday(String name, TimeOfDay time) {
     final now = DateTime.now();
     final key = DateFormat('yyyy-MM-dd').format(now);
@@ -91,108 +134,46 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final List<Widget> screens = [
-      DiaryScreen(
+    final Map<NavTab, Widget> screenMap = {
+      NavTab.diary: DiaryScreen(
         dayEntries: dayEntries,
         onUpdateDay: _updateDay,
         onDeleteDay: _deleteDay,
       ),
-      FoodLogScreen(
+      NavTab.log: FoodLogScreen(
         dayEntries: dayEntries,
         onSave: (updated) {
           setState(() => dayEntries = updated);
           _saveEntries();
         },
       ),
-      AnalysisScreen(dayEntries: dayEntries),
-      const SettingsScreen(),
-    ];
+      NavTab.analysis: AnalysisScreen(dayEntries: dayEntries),
+      NavTab.settings: const SettingsScreen(),
+    };
 
     return Scaffold(
-      body: _selectedIndex == 2
-          ? screens[1]
-          : (_selectedIndex > 2
-                ? screens[_selectedIndex - 1]
-                : screens[_selectedIndex]),
+      body: screenMap[NavTab.values[_selectedIndex]] ?? screenMap[NavTab.diary],
 
       bottomNavigationBar: NavigationBar(
         selectedIndex: _selectedIndex,
         onDestinationSelected: (index) {
-          if (index == 2) {
-            final String todayKey = DateFormat(
-              'yyyy-MM-dd',
-            ).format(DateTime.now());
-
-            final DayEntry todayEntry =
-                dayEntries[todayKey] ??
-                DayEntry(date: DateTime.now(), foods: [], tags: []);
-
-            showDialog(
-              context: context,
-              builder: (context) => QuickAddDialog(
-                initialMood: todayEntry.mood,
-                initialEnergy: todayEntry.energyLevel,
-                initialTags: todayEntry.tags,
-                onAdd: (type, {energy, health, mood, name, tags, time}) {
-                  setState(() {
-                    if (!dayEntries.containsKey(todayKey)) {
-                      dayEntries[todayKey] = todayEntry;
-                    }
-
-                    switch (type) {
-                      case QuickAddType.food:
-                        _addFoodToToday(name!, time!);
-                        break;
-                      case QuickAddType.mood:
-                        dayEntries[todayKey]!.mood = mood;
-                        break;
-                      case QuickAddType.energy:
-                        dayEntries[todayKey]!.energyLevel = energy;
-                        break;
-                      case QuickAddType.tags:
-                        dayEntries[todayKey]!.tags = tags ?? [];
-                        break;
-                      case QuickAddType.health:
-                        dayEntries[todayKey]!.hadReaction = health ?? false;
-                        break;
-                    }
-                  });
-                  _saveEntries();
-                },
-              ),
-            );
+          if (NavTab.values[index] == NavTab.add) {
+            _openQuickAdd();
           } else {
-            setState(() {
-              _selectedIndex = index;
-            });
+            setState(() => _selectedIndex = index);
           }
         },
-        destinations: const [
-          NavigationDestination(
-            icon: Icon(Icons.calendar_month_outlined),
-            selectedIcon: Icon(Icons.calendar_month),
-            label: 'Diario',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.restaurant_outlined),
-            selectedIcon: Icon(Icons.restaurant),
-            label: 'Log',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.add_circle, size: 32, color: AppTheme.primary),
-            label: 'Añadir',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.analytics_outlined),
-            selectedIcon: Icon(Icons.analytics),
-            label: 'Análisis',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.settings_outlined),
-            selectedIcon: Icon(Icons.settings),
-            label: 'Ajustes',
-          ),
-        ],
+        destinations: NavTab.values.map((tab) {
+          return NavigationDestination(
+            icon: Icon(
+              tab.icon,
+              size: tab == NavTab.add ? 32 : null,
+              color: tab == NavTab.add ? AppTheme.primary : null,
+            ),
+            selectedIcon: Icon(tab.selectedIcon),
+            label: tab.label,
+          );
+        }).toList(),
       ),
     );
   }

@@ -5,7 +5,6 @@ import 'screens/home_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  // Inicializamos el idioma español para fechas
   await initializeDateFormatting('es_ES', null);
   runApp(const FoodDiaryApp());
 }
@@ -19,7 +18,7 @@ class FoodDiaryApp extends StatelessWidget {
       title: 'Food Diary',
       theme: AppTheme.darkTheme,
       debugShowCheckedModeBanner: false,
-      home: const HomeScreen(), // Llamamos al orquestador
+      home: const HomeScreen(),
     );
   }
 }

@@ -89,7 +89,6 @@ class AnalysisScreen extends StatelessWidget {
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          // Pasamos validEntries.length en lugar de dayEntries.length
           _buildSummaryCard(daysWithReaction.length, validEntries.length),
 
           const SizedBox(height: 24),

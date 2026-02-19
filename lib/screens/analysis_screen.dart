@@ -1,364 +1,271 @@
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 import '../models/day_entry.dart';
 import '../theme/app_theme.dart';
+import '../widgets/analysis_widgets.dart';
 
-class AnalysisScreen extends StatelessWidget {
+class AnalysisScreen extends StatefulWidget {
   final Map<String, DayEntry> dayEntries;
 
   const AnalysisScreen({Key? key, required this.dayEntries}) : super(key: key);
 
   @override
+  State<AnalysisScreen> createState() => _AnalysisScreenState();
+}
+
+class _AnalysisScreenState extends State<AnalysisScreen> {
+  int _daysRange = 30; // 30 días por defecto
+
+  // Lógica de color semafórico para el riesgo
+  Color _getRiskColor(double rate) {
+    if (rate >= 75) return AppTheme.danger; // Rojo
+    if (rate >= 40) return AppTheme.warning; // Naranja
+    return Colors.greenAccent; // Verde
+  }
+
+  @override
   Widget build(BuildContext context) {
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
+    final cutOffDate = today.subtract(Duration(days: _daysRange));
 
-    // FILTRO CLAVE: Solo días pasados (o hoy) que tengan comida
-    final validEntries = dayEntries.values.where((day) {
+    // 1. FILTRADO: Rango de tiempo + que tengan comida
+    final validEntries = widget.dayEntries.values.where((day) {
       final isPastOrToday = day.date.isBefore(
         today.add(const Duration(days: 1)),
       );
-      final hasFood = day.foods.isNotEmpty;
-      return isPastOrToday && hasFood;
+      final isInRange =
+          _daysRange == 0 ||
+          day.date.isAfter(cutOffDate) ||
+          day.date.isAtSameMomentAs(cutOffDate);
+      return isPastOrToday && day.foods.isNotEmpty && isInRange;
     }).toList();
 
-    // Días con reacción (ya están filtrados implícitamente por tener reacción)
-    final daysWithReaction =
-        validEntries.where((day) => day.hadReaction).toList()
-          ..sort((a, b) => b.date.compareTo(a.date));
+    if (validEntries.isEmpty) return _buildEmptyState();
 
-    if (validEntries.isEmpty) {
-      return Scaffold(
-        appBar: AppBar(title: const Text('Análisis')),
-        body: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const Icon(
-                Icons.analytics_outlined,
-                size: 80,
-                color: AppTheme.textTertiary,
-              ),
-              const SizedBox(height: 16),
-              const Text(
-                'Datos insuficientes',
-                style: TextStyle(
-                  fontSize: 18,
-                  color: AppTheme.textSecondary,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-              const SizedBox(height: 8),
-              const Text(
-                'Registra comidas en días pasados\npara ver el análisis',
-                style: TextStyle(color: AppTheme.textTertiary, fontSize: 14),
-                textAlign: TextAlign.center,
-              ),
-            ],
-          ),
-        ),
-      );
-    }
-
-    // Análisis de alimentos (usando validEntries para la frecuencia total)
-    final foodFrequency = <String, int>{};
-    final foodAppearances = <String, List<DateTime>>{};
-    final allFoods = <String, int>{};
-
-    for (var day in daysWithReaction) {
-      for (var food in day.foods) {
-        final foodName = food.name.toLowerCase().trim();
-        foodFrequency[foodName] = (foodFrequency[foodName] ?? 0) + 1;
-        foodAppearances.putIfAbsent(foodName, () => []);
-        foodAppearances[foodName]!.add(day.date);
-      }
-    }
+    // 2. PROCESAMIENTO DE DATOS
+    final daysWithReaction = validEntries
+        .where((day) => day.hadReaction)
+        .toList();
+    final moodCounts = <String, int>{};
+    final tagFreqInReactions = <String, int>{};
+    double totalEnergy = 0;
+    int energyCount = 0;
+    final foodFreqInReactions = <String, int>{};
+    final totalFoodAppearances = <String, int>{};
 
     for (var day in validEntries) {
+      if (day.mood != null)
+        moodCounts[day.mood!] = (moodCounts[day.mood!] ?? 0) + 1;
+      if (day.energyLevel != null) {
+        totalEnergy += day.energyLevel!;
+        energyCount++;
+      }
       for (var food in day.foods) {
-        final foodName = food.name.toLowerCase().trim();
-        allFoods[foodName] = (allFoods[foodName] ?? 0) + 1;
+        final name = food.name.toLowerCase().trim();
+        totalFoodAppearances[name] = (totalFoodAppearances[name] ?? 0) + 1;
+        if (day.hadReaction) {
+          foodFreqInReactions[name] = (foodFreqInReactions[name] ?? 0) + 1;
+        }
+      }
+      if (day.hadReaction) {
+        for (var tag in day.tags) {
+          tagFreqInReactions[tag] = (tagFreqInReactions[tag] ?? 0) + 1;
+        }
       }
     }
 
-    final sortedFoods = foodFrequency.entries.toList()
-      ..sort((a, b) => b.value.compareTo(a.value));
+    final avgEnergy = energyCount > 0 ? totalEnergy / energyCount : 0.0;
+    final topMood = moodCounts.isEmpty
+        ? "N/A"
+        : (moodCounts.entries.toList()
+                ..sort((a, b) => b.value.compareTo(a.value)))
+              .first
+              .key;
+
+    final sortedFoods = foodFreqInReactions.entries.toList()
+      ..sort(
+        (a, b) => (b.value / totalFoodAppearances[b.key]!).compareTo(
+          a.value / totalFoodAppearances[a.key]!,
+        ),
+      );
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Análisis')),
+      backgroundColor: AppTheme.darkBg,
+      appBar: AppBar(title: const Text('Análisis'), centerTitle: true),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          _buildSummaryCard(daysWithReaction.length, validEntries.length),
-
-          const SizedBox(height: 24),
-          _buildSectionHeader(),
+          // Selector de rango dinámico
+          AnalysisWidgets.rangeSelector(
+            currentRange: _daysRange,
+            onSelected: (val) => setState(() => _daysRange = val),
+          ),
           const SizedBox(height: 16),
 
-          ...sortedFoods.take(15).map((entry) {
-            final totalAppearances = allFoods[entry.key] ?? entry.value;
-            final reactionRate = (entry.value / totalAppearances * 100);
-            final dates = foodAppearances[entry.key]!;
+          AnalysisWidgets.summaryCard(
+            reactionsCount: daysWithReaction.length,
+            totalDays: validEntries.length,
+          ),
 
-            return _buildFoodAnalysisCard(
-              entry.key,
-              entry.value,
-              reactionRate,
-              totalAppearances,
-              dates,
-            );
-          }),
+          const SizedBox(height: 24),
+          AnalysisWidgets.sectionHeader(
+            "Bienestar General",
+            Icons.favorite_border_rounded,
+          ),
+          Row(
+            children: [
+              Expanded(
+                child: AnalysisWidgets.infoBox(
+                  label: "Ánimo Común",
+                  value: topMood,
+                  icon: Icons.emoji_emotions_outlined,
+                  color: AppTheme.primary,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: AnalysisWidgets.infoBox(
+                  label: "Energía Promedio",
+                  value: avgEnergy.toStringAsFixed(1),
+                  icon: Icons.bolt,
+                  color: Colors.orange,
+                ),
+              ),
+            ],
+          ),
+
+          if (tagFreqInReactions.isNotEmpty) ...[
+            const SizedBox(height: 32),
+            AnalysisWidgets.sectionHeader("Factores en Reacciones", Icons.tag),
+            AnalysisWidgets.tagsRiskAnalysis(tagFreqInReactions),
+          ],
+
+          const SizedBox(height: 32),
+          AnalysisWidgets.sectionHeader(
+            "Alimentos Sospechosos",
+            Icons.warning_amber_rounded,
+          ),
+          const SizedBox(height: 8),
+          if (sortedFoods.isEmpty)
+            const Text(
+              "No se detectaron alimentos con riesgo en este periodo.",
+              style: TextStyle(color: AppTheme.textSecondary),
+            )
+          else
+            ...sortedFoods
+                .take(10)
+                .map(
+                  (e) =>
+                      _foodTile(e.key, e.value, totalFoodAppearances[e.key]!),
+                ),
         ],
       ),
     );
   }
 
-  Widget _buildSummaryCard(int reactionsCount, int totalDays) {
-    return Card(
-      color: AppTheme.darkCard,
-      child: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(10),
-                  decoration: BoxDecoration(
-                    color: AppTheme.warning.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: const Icon(
-                    Icons.analytics,
-                    color: AppTheme.warning,
-                    size: 24,
-                  ),
-                ),
-                const SizedBox(width: 12),
-                const Text(
-                  'Resumen',
-                  style: TextStyle(
-                    color: AppTheme.textPrimary,
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 20),
-            _buildStatRow(
-              'Días con reacción',
-              '$reactionsCount',
-              Icons.warning_rounded,
-              AppTheme.danger,
-            ),
-            const SizedBox(height: 12),
-            _buildStatRow(
-              'Total de días',
-              '$totalDays',
-              Icons.calendar_today,
-              AppTheme.primary,
-            ),
-            const SizedBox(height: 12),
-            _buildStatRow(
-              'Tasa de reacción',
-              '${((reactionsCount / totalDays) * 100).toStringAsFixed(1)}%',
-              Icons.trending_up,
-              AppTheme.warning,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
+  Widget _foodTile(String name, int reactionCount, int total) {
+    final double rateDouble = (reactionCount / total * 100);
+    final Color riskColor = _getRiskColor(rateDouble);
 
-  Widget _buildSectionHeader() {
-    return Row(
-      children: [
-        const Icon(Icons.search, color: AppTheme.primary, size: 20),
-        const SizedBox(width: 8),
-        const Text(
-          'Alimentos Sospechosos',
-          style: TextStyle(
-            fontSize: 20,
-            fontWeight: FontWeight.bold,
-            color: AppTheme.textPrimary,
-          ),
+    return ListTile(
+      contentPadding: EdgeInsets.zero,
+      leading: Container(
+        width: 40,
+        height: 40,
+        decoration: BoxDecoration(
+          color: riskColor.withOpacity(0.1),
+          shape: BoxShape.circle,
         ),
-      ],
-    );
-  }
-
-  Widget _buildFoodAnalysisCard(
-    String foodName,
-    int reactionCount,
-    double reactionRate,
-    int totalAppearances,
-    List<DateTime> dates,
-  ) {
-    Color getRiskColor() {
-      if (reactionRate > 75) return AppTheme.danger;
-      if (reactionRate > 50) return AppTheme.warning;
-      return Colors.yellow[700]!;
-    }
-
-    return Card(
-      color: reactionRate > 50
-          ? AppTheme.danger.withOpacity(0.05)
-          : AppTheme.darkCard,
-      margin: const EdgeInsets.only(bottom: 12),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-        side: reactionRate > 50
-            ? BorderSide(color: AppTheme.danger.withOpacity(0.2), width: 1)
-            : BorderSide.none,
-      ),
-      child: Theme(
-        data: ThemeData(
-          dividerColor: Colors.transparent,
-          splashColor: Colors.transparent,
-          highlightColor: Colors.transparent,
-        ),
-        child: ExpansionTile(
-          tilePadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-          childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-          leading: Container(
-            width: 48,
-            height: 48,
-            decoration: BoxDecoration(
-              color: getRiskColor().withOpacity(0.1),
-              shape: BoxShape.circle,
-            ),
-            child: Center(
-              child: Text(
-                '$reactionCount',
-                style: TextStyle(
-                  color: getRiskColor(),
-                  fontWeight: FontWeight.bold,
-                  fontSize: 16,
-                ),
-              ),
-            ),
-          ),
-          title: Text(
-            foodName,
-            style: const TextStyle(
-              color: AppTheme.textPrimary,
-              fontWeight: FontWeight.w600,
-              fontSize: 16,
-            ),
-          ),
-          subtitle: Padding(
-            padding: const EdgeInsets.only(top: 4),
-            child: Text(
-              '$reactionCount día${reactionCount > 1 ? "s" : ""} • ${reactionRate.toStringAsFixed(0)}% tasa',
-              style: TextStyle(
-                color: reactionRate > 50
-                    ? getRiskColor()
-                    : AppTheme.textSecondary,
-                fontSize: 13,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-          ),
-          trailing: Icon(
-            reactionRate > 75
-                ? Icons.error
-                : reactionRate > 50
-                ? Icons.warning_rounded
-                : Icons.info,
-            color: getRiskColor(),
-            size: 24,
-          ),
-          children: [
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: AppTheme.darkBg,
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Total de apariciones: $totalAppearances veces',
-                    style: const TextStyle(
-                      color: AppTheme.textSecondary,
-                      fontSize: 13,
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  const Text(
-                    'Fechas con reacción:',
-                    style: TextStyle(
-                      fontWeight: FontWeight.w600,
-                      color: AppTheme.textPrimary,
-                      fontSize: 13,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  ...dates.map(
-                    (date) => Padding(
-                      padding: const EdgeInsets.only(bottom: 6),
-                      child: Row(
-                        children: [
-                          Container(
-                            width: 4,
-                            height: 4,
-                            decoration: BoxDecoration(
-                              color: getRiskColor(),
-                              shape: BoxShape.circle,
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          Text(
-                            DateFormat('d MMM yyyy', 'es_ES').format(date),
-                            style: const TextStyle(
-                              fontSize: 13,
-                              color: AppTheme.textSecondary,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildStatRow(String label, String value, IconData icon, Color color) {
-    return Row(
-      children: [
-        Container(
-          padding: const EdgeInsets.all(8),
-          decoration: BoxDecoration(
-            color: color.withOpacity(0.1),
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: Icon(icon, size: 18, color: color),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
+        child: Center(
           child: Text(
-            label,
-            style: const TextStyle(color: AppTheme.textSecondary, fontSize: 14),
+            "$reactionCount",
+            style: TextStyle(color: riskColor, fontWeight: FontWeight.bold),
           ),
         ),
-        Text(
-          value,
-          style: const TextStyle(
-            fontWeight: FontWeight.bold,
-            color: AppTheme.textPrimary,
-            fontSize: 16,
-          ),
+      ),
+      title: Text(
+        name,
+        style: const TextStyle(
+          color: Colors.white,
+          fontWeight: FontWeight.bold,
         ),
-      ],
+      ),
+      subtitle: Text(
+        "En $total registros",
+        style: const TextStyle(color: AppTheme.textSecondary, fontSize: 12),
+      ),
+      trailing: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          Text(
+            "${rateDouble.toStringAsFixed(0)}% riesgo",
+            style: TextStyle(
+              color: riskColor,
+              fontWeight: FontWeight.bold,
+              fontSize: 14,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Container(
+            width: 60,
+            height: 3,
+            decoration: BoxDecoration(
+              color: riskColor.withOpacity(0.2),
+              borderRadius: BorderRadius.circular(2),
+            ),
+            child: FractionallySizedBox(
+              alignment: Alignment.centerLeft,
+              widthFactor: (rateDouble / 100).clamp(0.0, 1.0),
+              child: Container(
+                decoration: BoxDecoration(
+                  color: riskColor,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildEmptyState() {
+    return Scaffold(
+      backgroundColor: AppTheme.darkBg,
+      appBar: AppBar(title: const Text('Análisis')),
+      body: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            AnalysisWidgets.rangeSelector(
+              currentRange: _daysRange,
+              onSelected: (val) => setState(() => _daysRange = val),
+            ),
+            const Spacer(),
+            Icon(
+              Icons.analytics_outlined,
+              size: 60,
+              color: AppTheme.textTertiary,
+            ),
+            const SizedBox(height: 16),
+            const Text(
+              "Sin datos para este periodo",
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              "Intenta cambiar el filtro o registra más comidas.",
+              style: TextStyle(color: AppTheme.textSecondary),
+            ),
+            const Spacer(),
+          ],
+        ),
+      ),
     );
   }
 }

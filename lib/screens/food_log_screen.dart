@@ -44,6 +44,14 @@ class _FoodLogScreenState extends State<FoodLogScreen> {
     setState(() {
       _selectedDate = date;
     });
+
+    if (DateUtils.isSameDay(date, DateTime.now())) {
+      _calendarScrollController.animateTo(
+        (30 * 67.0) - 170,
+        duration: const Duration(milliseconds: 500),
+        curve: Curves.easeInOut,
+      );
+    }
   }
 
   void _showAddFoodDialog(DayEntry entry) {

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import '../models/day_entry.dart';
 import '../models/food_item.dart';
@@ -35,6 +36,14 @@ class _FoodLogScreenState extends State<FoodLogScreen> {
     return widget.dayEntries[_selectedDateKey]!;
   }
 
+  void _goToPrevDay() {
+    _changeDate(_selectedDate.subtract(const Duration(days: 1)));
+  }
+
+  void _goToNextDay() {
+    _changeDate(_selectedDate.add(const Duration(days: 1)));
+  }
+
   void _saveChanges() {
     widget.onSave(widget.dayEntries);
     setState(() {});
@@ -45,11 +54,24 @@ class _FoodLogScreenState extends State<FoodLogScreen> {
       _selectedDate = date;
     });
 
-    if (DateUtils.isSameDay(date, DateTime.now())) {
+    // 1. Vibración sutil al cambiar de día
+    HapticFeedback.lightImpact();
+
+    // 2. Lógica de Scroll Suave
+    // Calculamos el índice relativo a "Hoy" (que es el índice 30)
+    final int dayDifference = date.difference(DateTime.now()).inDays;
+    final int targetIndex = 30 + dayDifference;
+
+    // Ancho de la tarjeta (55) + márgenes (12) = 67.0
+    const double itemWidth = 67.0;
+
+    // Calculamos la posición para centrar el elemento
+    // El '- 170' es un ajuste para centrarlo según el ancho promedio de pantalla
+    if (_calendarScrollController.hasClients) {
       _calendarScrollController.animateTo(
-        (30 * 67.0) - 170,
+        (targetIndex * itemWidth) - 170,
         duration: const Duration(milliseconds: 500),
-        curve: Curves.easeInOut,
+        curve: Curves.easeOutBack, // Un efecto de rebote suave al final
       );
     }
   }
@@ -113,18 +135,49 @@ class _FoodLogScreenState extends State<FoodLogScreen> {
     return Scaffold(
       appBar: AppBar(
         centerTitle: true,
-        title: Column(
+        title: Row(
+          mainAxisSize: MainAxisSize.min,
           children: [
-            Text(
-              DateFormat('EEEE', 'es_ES').format(_selectedDate).toUpperCase(),
-              style: const TextStyle(fontSize: 16, letterSpacing: 1.5),
-            ),
-            Text(
-              DateFormat('d MMMM yyyy', 'es_ES').format(_selectedDate),
-              style: const TextStyle(
-                fontSize: 12,
-                color: AppTheme.textSecondary,
+            IconButton(
+              icon: const Icon(
+                Icons.chevron_left,
+                size: 28,
+                color: AppTheme.primary,
               ),
+              onPressed: _goToPrevDay,
+            ),
+            const SizedBox(width: 8),
+            Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  DateFormat(
+                    'EEEE',
+                    'es_ES',
+                  ).format(_selectedDate).toUpperCase(),
+                  style: const TextStyle(
+                    fontSize: 16,
+                    letterSpacing: 1.5,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                Text(
+                  DateFormat('d MMMM yyyy', 'es_ES').format(_selectedDate),
+                  style: const TextStyle(
+                    fontSize: 11,
+                    color: AppTheme.textSecondary,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(width: 8),
+            IconButton(
+              icon: const Icon(
+                Icons.chevron_right,
+                size: 28,
+                color: AppTheme.primary,
+              ),
+              onPressed: _goToNextDay,
             ),
           ],
         ),

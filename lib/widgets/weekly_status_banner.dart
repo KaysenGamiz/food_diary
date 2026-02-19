@@ -74,7 +74,6 @@ class _WeeklyStatusBannerState extends State<WeeklyStatusBanner>
 
   void _speedUp() {
     HapticFeedback.lightImpact();
-    // Aceleramos el controlador para que llegue rápido al final y dispare _fadeOutAndClose
     _controller.duration = const Duration(milliseconds: 500);
     _controller.forward();
   }

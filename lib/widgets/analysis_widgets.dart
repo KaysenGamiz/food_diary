@@ -1,8 +1,9 @@
+import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import '../theme/app_theme.dart';
 
 class AnalysisWidgets {
-  // Selector de rango de tiempo (7D, 30D, Todo)
+  // Selector de rango de tiempo (7D, 30D, 3M, Todo)
   static Widget rangeSelector({
     required int currentRange,
     required Function(int) onSelected,
@@ -175,6 +176,147 @@ class AnalysisWidgets {
           ),
         );
       }).toList(),
+    );
+  }
+
+  static Widget moodRadarChart(Map<String, int> moodCounts) {
+    // 1. Asegurar que siempre existan las 5 categorías para mantener la forma de pentágono
+    final Map<String, double> fullData = {
+      'Excelente': (moodCounts['Excelente'] ?? 0).toDouble(),
+      'Bien': (moodCounts['Bien'] ?? 0).toDouble(),
+      'Neutral': (moodCounts['Neutral'] ?? 0).toDouble(),
+      'Triste': (moodCounts['Triste'] ?? 0).toDouble(),
+      'Mal': (moodCounts['Mal'] ?? 0).toDouble(),
+    };
+
+    final List<String> titles = fullData.keys.toList();
+    final List<RadarEntry> entries = fullData.values
+        .map((val) => RadarEntry(value: val))
+        .toList();
+
+    return Container(
+      height: 320,
+      margin: const EdgeInsets.symmetric(vertical: 16),
+      padding: const EdgeInsets.all(20), // Padding uniforme
+      decoration: BoxDecoration(
+        color: AppTheme.darkCard,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: AppTheme.primary.withOpacity(0.05)),
+      ),
+      child: RadarChart(
+        RadarChartData(
+          dataSets: [
+            RadarDataSet(
+              fillColor: AppTheme.primary.withOpacity(0.25),
+              borderColor: AppTheme.primary,
+              entryRadius: 3,
+              dataEntries: entries,
+              borderWidth: 2,
+            ),
+          ],
+          radarBackgroundColor: Colors.transparent,
+          radarBorderData: const BorderSide(color: Colors.white10, width: 1),
+          gridBorderData: const BorderSide(color: Colors.white10, width: 1),
+          tickCount: 3,
+          tickBorderData: const BorderSide(color: Colors.white10),
+          ticksTextStyle: const TextStyle(
+            color: Colors.transparent,
+            fontSize: 0,
+          ),
+
+          titlePositionPercentageOffset: 0.15,
+          titleTextStyle: const TextStyle(
+            color: Colors.white,
+            fontSize: 11,
+            fontWeight: FontWeight.w500,
+          ),
+          getTitle: (index, angle) {
+            final title = titles[index];
+            if (index == 0) return RadarChartTitle(text: title);
+            return RadarChartTitle(text: title);
+          },
+        ),
+        duration: const Duration(milliseconds: 400),
+        curve: Curves.easeInOut,
+      ),
+    );
+  }
+
+  // --- MÉTODO AUXILIAR PARA LA LISTA DE ALIMENTOS ---
+  // Llama a este método desde tu ListView en AnalysisScreen
+  static Widget foodRiskTile({
+    required String name,
+    required int reactionCount,
+    required int totalAppearances,
+    required Color riskColor,
+  }) {
+    final double rateDouble = (reactionCount / totalAppearances * 100);
+
+    return ListTile(
+      contentPadding: EdgeInsets.zero,
+      leading: Container(
+        width: 44,
+        height: 44,
+        decoration: BoxDecoration(
+          color: riskColor.withOpacity(0.15),
+          shape: BoxShape.circle,
+          border: Border.all(color: riskColor.withOpacity(0.3), width: 1),
+        ),
+        child: Center(
+          child: Text(
+            "$reactionCount",
+            style: TextStyle(
+              color: riskColor,
+              fontWeight: FontWeight.bold,
+              fontSize: 16,
+            ),
+          ),
+        ),
+      ),
+      title: Text(
+        name,
+        style: const TextStyle(
+          color: Colors.white,
+          fontWeight: FontWeight.bold,
+        ),
+      ),
+      subtitle: Text(
+        "Aparece en $totalAppearances registros",
+        style: const TextStyle(color: AppTheme.textSecondary, fontSize: 12),
+      ),
+      trailing: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          Text(
+            "${rateDouble.toStringAsFixed(0)}% riesgo",
+            style: TextStyle(
+              color: riskColor,
+              fontWeight: FontWeight.bold,
+              fontSize: 14,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Container(
+            width: 60,
+            height: 4,
+            decoration: BoxDecoration(
+              color: riskColor.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(2),
+            ),
+            child: FractionallySizedBox(
+              alignment: Alignment.centerLeft,
+              widthFactor: (rateDouble / 100).clamp(0.0, 1.0),
+              child: Container(
+                decoration: BoxDecoration(
+                  color: riskColor,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 

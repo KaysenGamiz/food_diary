@@ -13,13 +13,12 @@ class AnalysisScreen extends StatefulWidget {
 }
 
 class _AnalysisScreenState extends State<AnalysisScreen> {
-  int _daysRange = 30; // 30 días por defecto
+  int _daysRange = 30;
 
-  // Lógica de color semafórico para el riesgo
   Color _getRiskColor(double rate) {
-    if (rate >= 75) return AppTheme.danger; // Rojo
-    if (rate >= 40) return AppTheme.warning; // Naranja
-    return Colors.greenAccent; // Verde
+    if (rate >= 70) return AppTheme.danger;
+    if (rate >= 40) return AppTheme.warning;
+    return AppTheme.success;
   }
 
   @override
@@ -28,7 +27,7 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
     final today = DateTime(now.year, now.month, now.day);
     final cutOffDate = today.subtract(Duration(days: _daysRange));
 
-    // 1. FILTRADO: Rango de tiempo + que tengan comida
+    // 1. FILTRADO
     final validEntries = widget.dayEntries.values.where((day) {
       final isPastOrToday = day.date.isBefore(
         today.add(const Duration(days: 1)),
@@ -42,7 +41,7 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
 
     if (validEntries.isEmpty) return _buildEmptyState();
 
-    // 2. PROCESAMIENTO DE DATOS
+    // 2. PROCESAMIENTO
     final daysWithReaction = validEntries
         .where((day) => day.hadReaction)
         .toList();
@@ -54,8 +53,9 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
     final totalFoodAppearances = <String, int>{};
 
     for (var day in validEntries) {
-      if (day.mood != null)
+      if (day.mood != null && day.mood!.isNotEmpty) {
         moodCounts[day.mood!] = (moodCounts[day.mood!] ?? 0) + 1;
+      }
       if (day.energyLevel != null) {
         totalEnergy += day.energyLevel!;
         energyCount++;
@@ -95,7 +95,6 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          // Selector de rango dinámico
           AnalysisWidgets.rangeSelector(
             currentRange: _daysRange,
             onSelected: (val) => setState(() => _daysRange = val),
@@ -134,6 +133,20 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
             ],
           ),
 
+          // --- GRÁFICA CON FL_CHART ---
+          if (moodCounts.length >= 3)
+            AnalysisWidgets.moodRadarChart(moodCounts)
+          else if (moodCounts.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 20),
+              child: Center(
+                child: Text(
+                  "Registra al menos 3 tipos de ánimos para comparar.",
+                  style: TextStyle(color: AppTheme.textSecondary, fontSize: 12),
+                ),
+              ),
+            ),
+
           if (tagFreqInReactions.isNotEmpty) ...[
             const SizedBox(height: 32),
             AnalysisWidgets.sectionHeader("Factores en Reacciones", Icons.tag),
@@ -148,7 +161,7 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
           const SizedBox(height: 8),
           if (sortedFoods.isEmpty)
             const Text(
-              "No se detectaron alimentos con riesgo en este periodo.",
+              "Sin alimentos con riesgo.",
               style: TextStyle(color: AppTheme.textSecondary),
             )
           else
@@ -163,6 +176,7 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
     );
   }
 
+  // (Mantenemos _foodTile y _buildEmptyState igual que antes...)
   Widget _foodTile(String name, int reactionCount, int total) {
     final double rateDouble = (reactionCount / total * 100);
     final Color riskColor = _getRiskColor(rateDouble);
@@ -243,7 +257,7 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
               onSelected: (val) => setState(() => _daysRange = val),
             ),
             const Spacer(),
-            Icon(
+            const Icon(
               Icons.analytics_outlined,
               size: 60,
               color: AppTheme.textTertiary,
@@ -256,11 +270,6 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
               ),
-            ),
-            const SizedBox(height: 8),
-            const Text(
-              "Intenta cambiar el filtro o registra más comidas.",
-              style: TextStyle(color: AppTheme.textSecondary),
             ),
             const Spacer(),
           ],
